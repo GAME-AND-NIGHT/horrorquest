@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Сброс данных</title>
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #0a0b0e;
+            color: #f0f0f0;
+            text-align: center;
+            margin: 0;
+        }
+        h1 {
+            color: #e63946;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+            color: #cccccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Данные сброшены!</h1>
+    <p>Все данные из локального хранилища были очищены.</p>
+
+    <script>
+        localStorage.clear();
+        sessionStorage.clear();
+
+        if ('caches' in window) {
+            caches.keys().then(function(cacheNames) {
+                return Promise.all(
+                    cacheNames.map(function(cacheName) {
+                        return caches.delete(cacheName);
+                    })
+                );
+            }).then(function() {
+                console.log('All Service Worker caches cleared.');
+            });
+        }
+
+        // Redirect after a short delay
+        setTimeout(() => {
+            window.location.href = 'index.html'; // Or 'qr.html' as per project flow
+        }, 2000); // Redirect after 2 seconds
+    </script>
+</body>
+</html>

@@ -1,0 +1,722 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Старт</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./src/css/style.css">
+    <link rel="stylesheet" href="./src/css/clon-preloader.css">
+    <style>
+        #question-container {
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            display: flex;
+            height: 13.5vh;
+            padding: 35px;
+            margin: 0vh auto 0;
+            overflow: hidden;
+            text-align: center;
+        }
+        #cat-container {
+            margin-bottom: 2vh;
+            z-index: 3;
+        }
+        #cat-container video {
+            min-width: 110%;
+        }
+        #cat-container canvas {
+            z-index: 3;
+        }
+        #progress-bar .step {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+        #progress-bar .active {
+            background: rgba(255, 255, 255, 0.76);
+        }
+        #soundOverlay, #interaction-required-popup, #camera-access-required {
+            z-index: 999;
+        }
+        button, #startBtn, .flow-btn, .primary, #soundStartBtn, #interaction-btn, #close-browser-popup, #skipVideoButton {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+<div id="preloader">
+    <div id="preloader-text">Загрузка...</div>
+    <div id="preloader-progress-container">
+        <div id="preloader-progress-bar"></div>
+    </div>
+</div>
+<script src="src/js/webgl-video-processor.js"></script>
+<script src="src/js/config.js"></script>
+<script src="src/js/requests.js"></script>
+<video id="webcam-feed" playsinline autoplay muted></video>
+
+<div id="main-container" class="hidden">
+    <div id="progress-bar" style="margin-top: 20px">
+        <div class="step" id="step1"></div>
+        <div class="step" id="step2"></div>
+        <div class="step" id="step3"></div>
+    </div>
+    <div id="wrong" style="display:none"></div>
+    <div id="question-containe" style="height:8vh; display:flex; justify-content:flex-end; align-items:center; margin: 1vh 0; padding-right: 10vw;">
+        <div id="skipVideoButton" style=" z-index: 1000; height: 100%; aspect-ratio: 1/1; border-radius: 50%; cursor: pointer; border:1px solid rgba(255, 255, 255, 0.4); background: #77777766 url(./svg/array.svg) no-repeat center; background-size: 70%; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+        </div>
+    </div>
+    <div id="question-container" style="height:13.5vh">
+        <div id="start-text"><h2 style="margin:15px 0">Привет!</h2>Скорее жми Старт, котан!</div>
+        <div id="flow-ui" role="dialog" aria-hidden="true"></div>
+        <div id="flow-question"></div>
+    </div>
+
+    <div id="cat-container">
+        <canvas id="cat-canvas" style="position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 2;"></canvas>
+        <video id="sbercat-video-1" playsinline crossorigin="anonymous"
+               style="position: absolute; top: 0; left: 0; display: none; width: 100%; height: 100%; object-fit: contain; object-position: top center; z-index: 3;">
+            Ваш браузер не поддерживает видео.
+        </video>
+        <video id="sbercat-video-2" playsinline crossorigin="anonymous"
+               style="position: absolute; top: 0; left: 0; display: none; width: 100%; height: 100%; object-fit: contain; object-position: top center; z-index: 3;"></video>
+        <video id="sbercat-video-3" playsinline crossorigin="anonymous"
+               style="position: absolute; top: 0; left: 0; display: none; width: 100%; height: 100%; object-fit: contain; object-position: top center; z-index: 3;"></video>
+    </div>
+    <div class="third" id="third"
+         style="
+         height: 15vh;
+          display:none"
+    ></div>
+</div>
+
+<div id="startBtn" class="hidden">Старт</div>
+<div id="flow-buttons" class="hidden"></div>
+
+<div id="soundOverlay" class="hidden" style="display: none;">
+    <div class="soundBox">
+        <div style="color:white; font-size: 60px; margin-bottom: 30px">Готов начать?</div>
+        <button id="soundStartBtn">Готов</button>
+    </div>
+</div>
+
+
+<div id="blur-overlay"></div>
+
+<div id="interaction-required-popup"
+     style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); background: rgba(0,0,0,0.25); z-index: 9999999; display: none; align-items: center; justify-content: center;">
+    <div class="soundBox">
+        <div style="color:white; font-size: 60px; margin-bottom: 30px">Готов начать?</div>
+        <button id="interaction-btn" class="primary"
+                style="font-size: 38px; padding: 22px 60px; border-radius: 16px; border: none; cursor: pointer;">
+            Готов
+        </button>
+    </div>
+</div>
+<div id="supported-browsers-popup"
+     style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); color: white; text-align: center; z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: rgba(14, 15, 18, 0.92); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 2px solid rgba(190, 32, 42, 0.55); border-radius: 20px; padding: 45px; margin: 20px;">
+        <h1 style="font-size: 54px; font-family: 'Oswald', sans-serif; letter-spacing: 1.5px; text-transform: uppercase; color: #ff3b49; margin-bottom: 25px;">Поддерживаемые браузеры</h1>
+        <p style="font-size: 36px; text-align: left; margin-bottom: 30px;">
+            Для корректной работы приложения убедитесь, что вы используете один из следующих браузеров:
+        <p>
+        <ul style="text-align: left;">
+            <li style="font-size: 34px;">Яндекс Браузер (последняя версия) Android</li>
+            <li style="font-size: 34px;">Google Chrome (последняя версия) Android</li>
+            <li style="font-size: 34px;">Safari (последняя версия) IOS</li>
+        </ul>
+        <p style="font-size: 36px; text-align: left; margin-bottom: 30px;">
+        </p>
+        <button id="close-browser-popup" class="primary"
+                style="font-size: 38px; padding: 22px 60px; border-radius: 16px; border: none; cursor: pointer;">
+            Понятно
+        </button>
+    </div>
+</div>
+<div id="orientation-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; color: white; display: flex; align-items: center; justify-content: center; z-index: 999999999;">
+    <p style="font-size: 5vw; text-align: center;">Пожалуйста, поверните экран</p>
+</div>
+
+<script src="src/js/common-functions.js"></script>
+<script src="src/js/preloader.js"></script>
+<script>
+    const skipVideoButton = document.getElementById('skipVideoButton');
+
+    function triggerImmediateButtonDisplayForOffline(videoSource) {
+        if (!navigator.onLine) {
+            if (videoSource.includes('cat_1_scen_1_1_fps25')) {
+                document.getElementById("startBtn").style.display = "block";
+            }
+            if (videoSource.includes('cat_1_scen_1_2_fps25_slojnost')) {
+                document.getElementById("flow-buttons").style.display = "flex";
+            }
+            if (videoSource.includes('cat_1_scen_1_3_fps25_vpered_kotan')) {
+                document.getElementById("flow-buttons").style.display = "flex";
+            }
+            if (videoSource.includes('cat_2_scene_wrong_station_25Fps')) {
+                const wrongBtn = document.getElementById("wrong-btn");
+                if(wrongBtn) wrongBtn.style.display = "block";
+            }
+        }
+    }
+
+    function updateSkipButtonVisibility() {
+        if (activeVideo && !activeVideo.paused && !activeVideo.ended && (activeVideo.dataset.originalSrc || "").indexOf('waiting_coffe_25Fps') === -1) {
+            skipVideoButton.style.display = 'block';
+        } else {
+            skipVideoButton.style.display = 'none';
+        }
+    }
+
+    skipVideoButton.addEventListener('click', () => {
+        if (activeVideo && !activeVideo.paused && !activeVideo.ended && (activeVideo.dataset.originalSrc || "").indexOf('waiting_coffe_25Fps') === -1) {
+            skipVideoButton.style.display = 'none';
+            activeVideo.currentTime = activeVideo.duration;
+        }
+    });
+    function checkOrientation() {
+        const overlay = document.getElementById('orientation-overlay');
+        // Show overlay if width is greater than height (landscape orientation)
+        if (window.innerWidth > window.innerHeight) {
+            overlay.style.display = 'flex';
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+
+    // Initial check on page load
+    document.addEventListener('DOMContentLoaded', checkOrientation);
+    // Re-check on window resize and orientation change events
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+
+    let catCanvas, webglProcessor, activeVideo;
+    let userHasStarted = false;
+    let isWrongStationHandled = false;
+
+    let videos;
+
+    const soundStartBtn = document.getElementById("startBtn");
+    soundStartBtn.style.display = "none";
+    document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+    }, { passive: false });
+
+    function playVideo(src, loop = false) {
+        const nextVideo = videos.find(v => v !== activeVideo);
+
+        if (!nextVideo) return null; // Return null if no nextVideo
+        nextVideo.dataset.endedTriggered = 'false';
+
+        const platformSrc = getPlatformVideoSrc(src);
+        const videoSrc = (window.preloadedVideoBlobs && window.preloadedVideoBlobs[platformSrc]) || platformSrc;
+
+        nextVideo.dataset.originalSrc = platformSrc;
+
+        nextVideo.pause();
+        nextVideo.currentTime = 0;
+        nextVideo.src = videoSrc;
+        if (isIOS) {
+            console.log('Playing video on iOS:', nextVideo.src);
+        }
+        nextVideo.loop = loop;
+        nextVideo.muted = false;
+        const playVideoWhenReady = () => {
+            if (nextVideo.readyState >= nextVideo.HAVE_ENOUGH_DATA) {
+                // Video is ready to play. Remove listener and attempt to play.
+                nextVideo.removeEventListener('canplaythrough', playVideoWhenReady);
+
+                nextVideo.addEventListener('playing', () => {
+                    if (activeVideo) {
+                        activeVideo.pause();
+                        if (!shouldUseWebGLChroma()) activeVideo.style.display = 'none';
+                    }
+                    activeVideo = nextVideo;
+                    if (shouldUseWebGLChroma()) {
+                        activeVideo.style.display = 'none';
+                        catCanvas.style.display = 'block';
+                    } else {
+                        activeVideo.style.display = 'block';
+                        catCanvas.style.display = 'none';
+                    }
+                    updateSkipButtonVisibility();
+                }, { once: true });
+
+                const playPromise = nextVideo.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error("Video play failed:", error, "for src:", src);
+                        if (error.name === "NotAllowedError") {
+                            console.log("Autoplay with sound was blocked. Trying to play muted.");
+                            nextVideo.muted = true;
+                            nextVideo.play().catch(e => console.error("Muted autoplay also failed:", e));
+                        }
+                    });
+                }
+            }
+        };
+
+        nextVideo.addEventListener('canplaythrough', playVideoWhenReady);
+        nextVideo.load();
+        // Fallback for cases where canplaythrough might not fire or video is already ready
+        playVideoWhenReady();
+        return nextVideo; // Return the video element
+    }
+
+    function handleWrongStation() {
+        if (isWrongStationHandled) return;
+        isWrongStationHandled = true;
+        document.getElementById('interaction-required-popup').style.display = 'none';
+        document.getElementById('start-text').style.display = 'none';
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('flow-ui').style.display = 'none';
+        document.getElementById('flow-question').style.display = 'none';
+        document.getElementById('soundOverlay').style.display = 'none';
+        document.getElementById('progress-bar').style.display = 'none';
+        document.getElementById('wrong').style.display = 'none';
+        videos.forEach(v => {
+            v.pause();
+            v.muted = true;
+            v.currentTime = 0;
+            if (isAndroid) v.style.display = 'none';
+        });
+
+        document.getElementById('blur-overlay').style.display = 'block';
+
+        const questionContainer = document.getElementById('question-container');
+        questionContainer.style.display = 'flex';
+        questionContainer.innerHTML = `<div style="text-align: center;"><div style="text-align: center; padding-bottom: 8px; font-size: 32px; font-weight: 700; color: #ff3b49; letter-spacing: 1.5px;">ТРЕВОГА: НЕВЕРНЫЙ СЕКТОР!</div><div style="font-size: 22px; line-height: 1.4; color: #e0e0e0;">Ты зашел не в ту зону карантина. Вернись к начальной точке и следуй инструкциям!</div></div>`;
+
+        const flowButtons = document.getElementById('flow-buttons');
+        flowButtons.style.display = 'flex';
+        flowButtons.innerHTML = '';
+
+        const wrongStationBtn = document.createElement('button');
+        wrongStationBtn.id = 'wrong-btn';
+        wrongStationBtn.className = 'primary';
+        wrongStationBtn.textContent = 'ВЕРНУТЬСЯ К МАРШРУТУ';
+        wrongStationBtn.style.width = '100%';
+        wrongStationBtn.style.display = 'none';
+        wrongStationBtn.onclick = function () {
+            document.getElementById('blur-overlay').style.display = 'none';
+            window.location.href = 'qr.html';
+        };
+        flowButtons.appendChild(wrongStationBtn);
+        const playedVideo = playVideo('general/lost', false);
+        if (playedVideo) {
+            triggerImmediateButtonDisplayForOffline(playedVideo.currentSrc);
+        }
+    }
+
+    function applyChromaKey(videoElement) {
+        if (!shouldUseWebGLChroma() || !webglProcessor || !videoElement.videoWidth) return;
+
+        const cropPercent = 0;
+        const crop = {
+            x: 0,
+            y: cropPercent,
+            width: 1,
+            height: 1 - cropPercent
+        };
+
+        const keyingOptions = {
+            threshold: 25 / 255.0,
+            max_green: 180.0 / 255.0
+        };
+
+        webglProcessor.render(videoElement, crop, keyingOptions);
+    }
+
+    function onVideoEnd(video) {
+        // Ensure this logic runs only once per video playback
+        if (video.dataset.endedTriggered === 'true') return;
+        video.dataset.endedTriggered = 'true';
+
+        const videoSource = decodeURIComponent(video.dataset.originalSrc || video.src || "");
+        if (videoSource.includes('v1_1') || videoSource.includes('cat_1_scen_1_1_fps25')) {
+            document.getElementById("startBtn").style.display = "block";
+        }
+        if (videoSource.includes('v1_2') || videoSource.includes('cat_1_scen_1_2_fps25_slojnost')) {
+            document.getElementById("flow-buttons").style.display = "flex";
+        }
+        if (videoSource.includes('v1_3') || videoSource.includes('cat_1_scen_1_3_fps25_vpered_kotan')) {
+            document.getElementById("flow-buttons").style.display = "flex";
+        }
+        if (videoSource.includes('lost') || videoSource.includes('cat_2_scene_wrong_station')) {
+            const wrongBtn = document.getElementById("wrong-btn");
+            if(wrongBtn) wrongBtn.style.display = "block";
+        }
+
+        if (videoSource.includes('wait')) {
+            incrementWaitCycle();
+            const nextWait = getWaitingVideoPath();
+            playVideo(nextWait, false);
+            return;
+        }
+
+        if (!video.loop && !videoSource.includes('wait')) {
+            playVideo(getWaitingVideoPath(), false);
+        }
+        updateSkipButtonVisibility(); // Update button visibility when video ends
+    }
+
+    function renderLoop() {
+        requestAnimationFrame(renderLoop);
+        if (activeVideo && !activeVideo.paused) {
+            if (shouldUseWebGLChroma()) {
+                applyChromaKey(activeVideo);
+            }
+        }
+    }
+
+    function startApp() {
+        const currentFile = window.location.pathname.split('/').pop();
+        let expectedStation = localStorage.getItem('currentStation');
+
+        if ((currentFile !== expectedStation) && expectedStation && expectedStation !== 'null') {
+            const interactionPopup = document.getElementById('interaction-required-popup');
+            interactionPopup.style.display = 'flex';
+            document.getElementById('interaction-btn').onclick = () => {
+                interactionPopup.style.display = 'none';
+                if (!isWrongStationHandled) {
+                    handleWrongStation();
+                }
+            };
+        } else {
+            if (!userHasStarted) { // Check if progress was restored
+                document.getElementById('soundOverlay').style.display = 'flex';
+            }
+
+            if (currentFile === 'index.html' && !localStorage.getItem('unauth_activated')) {
+                activateUnauth(SCENE_UUID).then(result => {
+                    if (result) {
+                        localStorage.setItem('unauth_activated', 'true');
+                    }
+                });
+            }
+        }
+        updateSkipButtonVisibility(); // Initial visibility check
+    }
+
+    function init() {
+        startWebcam();
+        catCanvas = document.getElementById('cat-canvas');
+
+        if (!shouldUseWebGLChroma()) {
+            catCanvas.style.display = 'none';
+        } else {
+            webglProcessor = new WebGLVideoProcessor(catCanvas);
+        }
+
+        videos = [
+            document.getElementById('sbercat-video-1'),
+            document.getElementById('sbercat-video-2'),
+            document.getElementById('sbercat-video-3')
+        ];
+        const video1 = document.getElementById('sbercat-video-1');
+
+        const initialPlatformSrc = getPlatformVideoSrc('1station/v1_1');
+        const initialVideoSrc = (window.preloadedVideoBlobs && window.preloadedVideoBlobs[initialPlatformSrc]) || initialPlatformSrc;
+        video1.src = initialVideoSrc;
+        if (isIOS) {
+            console.log('Playing initial video on iOS:', video1.src);
+        }
+        video1.dataset.originalSrc = initialPlatformSrc;
+        video1.load();
+        activeVideo = video1;
+
+        videos.forEach(v => {
+            v.addEventListener('ended', () => onVideoEnd(v));
+            v.addEventListener('timeupdate', () => {
+                if (v.duration && v.currentTime >= v.duration - 0.3) {
+                    onVideoEnd(v);
+                }
+            });
+        });
+        window.addEventListener('resize', () => {
+            if (shouldUseWebGLChroma() && activeVideo) {
+                applyChromaKey(activeVideo);
+            }
+        });
+
+        const savedProgress = JSON.parse(localStorage.getItem('index_progress') || 'null');
+        const soundStartButton = document.getElementById("soundStartBtn");
+
+        if (savedProgress && savedProgress.step === 4) {
+            // Directly show the scan button UI, bypassing the "continue" overlay.
+            userHasStarted = true;
+            activeVideo.muted = false;
+            document.getElementById("soundOverlay").style.display = "none";
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('start-text').style.display = 'none';
+
+            setStep(3);
+            document.getElementById("flow-question").style.display = 'flex';
+            document.getElementById("flow-question").innerHTML =
+                "Готов к сканированию?<br>Следуй по моим следам, ищи следующий код";
+            document.getElementById("flow-buttons").style.display = 'flex';
+            document.getElementById("flow-buttons").innerHTML = `
+                <button id="scanBtn" class="flow-btn">Сканировать код</button>
+            `;
+            document.getElementById("scanBtn").style.border = 'none';
+            document.getElementById('scanBtn').style.background = 'linear-gradient(135deg, #8a0c16 0%, #c41828 50%, #54060c 100%)';
+            document.getElementById("scanBtn").addEventListener("click", () => {
+                resetWaitCycle();
+                localStorage.removeItem('index_progress');
+                localStorage.setItem("currentStation", 'mainStation2.html');
+                stopWebcam();
+                window.location.href = "qr.html";
+            });
+            playVideo(getWaitingVideoPath(), false);
+
+        } else if (savedProgress && (savedProgress.step === 2 || (savedProgress.step === 3 && savedProgress.age !== undefined))) {
+            soundStartButton.textContent = 'Продолжить';
+            soundStartButton.addEventListener('click', () => {
+                resetWaitCycle();
+                userHasStarted = true;
+                activeVideo.muted = false;
+                document.getElementById("soundOverlay").style.display = "none";
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('start-text').style.display = 'none';
+
+                if (savedProgress.step === 2) {
+                    setStep(2);
+                    showAgeStep();
+                    playVideo('1station/v1_2', false);
+                } else if (savedProgress.step === 3) {
+                    setStep(3);
+                    showCountStep(savedProgress.age);
+                    playVideo(getWaitingVideoPath(), false);
+                    document.getElementById("flow-buttons").style.display = "flex";
+                }
+            });
+
+        } else {
+            setStep(1);
+            soundStartButton.addEventListener("click", () => {
+                resetWaitCycle();
+                userHasStarted = true;
+                activeVideo.muted = false;
+
+                const playAction = () => {
+                    const videoPlayPromise = activeVideo.play();
+                    videoPlayPromise.then(() => {
+                        document.getElementById("soundOverlay").style.display = "none";
+                        if (isAndroid) activeVideo.style.display = 'block';
+                        updateSkipButtonVisibility();
+                        triggerImmediateButtonDisplayForOffline(activeVideo.currentSrc);
+                    }).catch(e => {
+                        console.error("Video play failed", e);
+                        document.getElementById("soundOverlay").style.display = "none";
+                    });
+                };
+
+                if (activeVideo.readyState >= activeVideo.HAVE_ENOUGH_DATA) {
+                    playAction();
+                } else {
+                    activeVideo.addEventListener('canplaythrough', playAction, { once: true });
+                }
+            });
+
+            const startBtn = document.getElementById('startBtn');
+            startBtn.addEventListener('click', async () => {
+                resetWaitCycle();
+                if (isAndroid) {
+                    activeVideo.style.display = 'block';
+                    catCanvas.style.display = 'none';
+                }
+                if (!localStorage.getItem('user_id')) {
+                    localStorage.setItem('user_id', crypto.randomUUID());
+                }
+                localStorage.setItem('total_balls', '0');
+                localStorage.setItem('index_progress', JSON.stringify({step: 2}));
+                setStep(2);
+                const playedVideo = playVideo('1station/v1_2', false);
+                if (playedVideo) {
+                    triggerImmediateButtonDisplayForOffline(playedVideo.currentSrc);
+                }
+                startBtn.style.display = 'none';
+                document.getElementById('start-text').style.display = 'none';
+                showAgeStep();
+                updateSkipButtonVisibility();
+            });
+        }
+
+        startApp();
+        updateSkipButtonVisibility();
+
+        document.getElementById('close-browser-popup').addEventListener('click', () => {
+            document.getElementById('supported-browsers-popup').style.display = 'none';
+        });
+
+        window.addEventListener('pagehide', stopWebcam);
+
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'hidden') {
+                if (activeVideo && !activeVideo.paused) {
+                    activeVideo.pause();
+                }
+                stopWebcam();
+            } else {
+                const track = currentWebcamStream?.getVideoTracks?.()[0];
+                const isDead = !track || track.readyState === 'ended';
+                if (isDead || !currentWebcamStream) {
+                    startWebcam();
+                }
+                if (activeVideo) {
+                    if (activeVideo.ended) {
+                        onVideoEnd(activeVideo);
+                    } else if (activeVideo.paused && userHasStarted) {
+                        activeVideo.play().catch(err => {});
+                    }
+                }
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        if (shouldUseWebGLChroma()) {
+            renderLoop();
+        }
+    }
+
+    // --- Start Execution ---
+    const urlParams = getUrlParams();
+    const SCENE_UUID = urlParams.uuid || '44444e69-ebfc-41bd-a124-809da0a23db2';
+    const STATION = urlParams.station ? parseInt(urlParams.station) : 1;
+
+    if (!localStorage.getItem("user_id")) {
+        localStorage.setItem("user_id", crypto.randomUUID());
+        localStorage.setItem("total_balls", '0');
+    }
+    loadAgeCategories();
+
+    const indexAssetsConfig = {
+        video1: '1station/v1_1',
+        video2: '1station/v1_2',
+        video3: '1station/v1_3',
+        video4: 'general/lost',
+        video5: 'general/wait',
+        svg1: './svg/array.svg'
+    };
+
+    preloadAssets(
+        indexAssetsConfig,
+        init,
+        ['main-container', 'startBtn', 'flow-buttons', 'soundOverlay'],
+        ['mainStation2.html'], // htmlPagesToPreload
+        ['./src/css/style.css', './src/css/clon-preloader.css'], // cssAssets
+        [], // fontAssets
+        ['./src/js/config.js', './src/js/webgl-video-processor.js', './src/js/common-functions.js', './src/js/station-configs.js', './src/js/station-common.js', './src/js/preloader.js'] // jsAssets
+    );
+
+    async function showAgeStep() {
+        document.getElementById('flow-question').style.display = 'flex';
+        document.getElementById('flow-buttons').style.display = 'flex';
+        document.getElementById('flow-buttons').style.flexDirection = 'row';
+
+        document.getElementById("flow-question").innerHTML =
+            "Выбери возрастную категорию:";
+        let buttonsHTML = `
+            <button id="age18Btn" class="flow-btn" style="margin: 0 10px; font-size: 38px;">18+</button>
+            <button id="age30Btn" class="flow-btn" style="margin: 0 10px; font-size: 38px;">30+</button>
+        `;
+
+        document.getElementById("flow-buttons").innerHTML = buttonsHTML;
+        document.querySelectorAll('.flow-btn').forEach(btn => {
+            btn.style.background = 'linear-gradient(135deg, #8a0c16 0%, #c41828 50%, #54060c 100%)';
+            btn.style.border = 'none';
+        });
+
+        document.getElementById('age18Btn').addEventListener('click', () => {
+            resetWaitCycle();
+            localStorage.setItem('ageCategory', '18+');
+            showCountStep('18+');
+        });
+        document.getElementById('age30Btn').addEventListener('click', () => {
+            resetWaitCycle();
+            localStorage.setItem('ageCategory', '30+');
+            showCountStep('30+');
+        });
+    }
+
+    function showCountStep(age) {
+        localStorage.setItem('index_progress', JSON.stringify({step: 3, age: age}));
+        setStep(3);
+        document.getElementById("flow-question").innerHTML =
+            "На сколько вопросов ты готов ответить?";
+        document.getElementById("flow-buttons").style.flexDirection = 'column';
+        document.getElementById("flow-buttons").innerHTML = `
+            <button class="count-btn flow-btn" data-count="25">25 (по 5 на станцию)</button>
+            <button class="count-btn flow-btn" data-count="50">50 (по 10 на станцию)</button>
+            <button class="count-btn flow-btn" data-count="100">100 (по 20 на станцию)</button>
+        `;
+
+        [...document.querySelectorAll('.count-btn')].forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                resetWaitCycle();
+                const cnt = parseInt(e.currentTarget.dataset.count, 10);
+                finalizeFlow(age, cnt);
+            });
+        });
+    }
+
+    async function finalizeFlow(age, count) {
+        resetWaitCycle();
+        localStorage.setItem('questionCount', count.toString());
+        localStorage.setItem('ageCategory', age);
+        localStorage.setItem('difficulty', age === '30+' ? 'teen' : 'baby');
+        setStep(3);
+        localStorage.setItem('index_progress', JSON.stringify({step: 4}));
+        const playedVideo = playVideo('1station/v1_3', false);
+        if (playedVideo) {
+            triggerImmediateButtonDisplayForOffline(playedVideo.currentSrc);
+        }
+        document.getElementById("flow-question").innerHTML =
+            "Готов к сканированию?<br>Следуй по моим следам, ищи следующий код";
+        document.getElementById("flow-buttons").style.display = 'none';
+        document.getElementById("flow-buttons").innerHTML = `
+            <button id="scanBtn" class="flow-btn">Сканировать код</button>
+        `;
+        document.getElementById("scanBtn").style.border = 'none';
+        document.getElementById('scanBtn').style.background = 'linear-gradient(135deg, #8a0c16 0%, #c41828 50%, #54060c 100%)';
+        document.getElementById("scanBtn").addEventListener("click", () => {
+            resetWaitCycle();
+            localStorage.removeItem('index_progress');
+            localStorage.setItem("currentStation", 'mainStation2.html');
+            stopWebcam();
+            window.location.href = "qr.html";
+        });
+        updateSkipButtonVisibility();
+    }
+
+    function setStep(n) {
+        document.querySelectorAll('#progress-bar .step').forEach((el, i) => {
+            el.classList.toggle('active', i === n - 1);
+        });
+    }
+
+    function getOperatingSystem() {
+        const userAgent = navigator.userAgent || navigator.platform || '';
+        if (/Android/i.test(userAgent)) return 'Android';
+        if (/iOS|iPhone|iPad|iPod/i.test(userAgent)) return 'iOS';
+        return 'Unknown';
+    }
+    function getBrowser() {
+        const userAgent = navigator.userAgent || '';
+        if (userAgent.indexOf('CriOS') > -1) return 'Chrome';
+        if (userAgent.indexOf('FxiOS') > -1) return 'Firefox';
+        if (userAgent.indexOf('Chrome') > -1 && userAgent.indexOf('Edg') === -1) return 'Chrome';
+        if (userAgent.indexOf('Firefox') > -1) return 'Firefox';
+        if (userAgent.indexOf('Edg') > -1) return 'Edge';
+        if (userAgent.indexOf('Safari') > -1) return 'Safari';
+        return 'Unknown';
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./src/css/style.css">
+    <link rel="stylesheet" href="./src/css/preloader.css">
+    <style>
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.42);
+        }
+        #question-container {
+            flex: 0 0 auto;
+            padding: 0 40px;
+            height: 14.5vh;
+            margin: 0 auto 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        #cat-container video {
+            min-width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="preloader">
+    <div id="preloader-text">Загрузка...</div>
+    <div id="preloader-progress-container">
+        <div id="preloader-progress-bar"></div>
+    </div>
+</div>
+<script src="src/js/webgl-video-processor.js"></script>
+<script src="src/js/config.js"></script>
+<div id="soundOverlay" class="hidden">
+    <div class="soundBox">
+        <div style="color:white; font-size: 60px; margin-bottom: 30px">Готов посмотреть результат?</div>
+        <button id="soundStartBtn">Смотреть!</button>
+    </div>
+</div>
+
+<div id="main-content" class="hidden">
+    <video id="arjs-video" playsinline autoplay muted></video>
+
+    <div id="main-container">
+        <div id="progress-bar" style="margin-top: 20px">
+            <div class="step" id="step1"></div>
+            <div class="step" id="step2"></div>
+            <div class="step" id="step3"></div>
+        </div>
+        <div id="question-containe" style="height:8vh; display:flex; justify-content:flex-end; align-items:center; margin: 1vh 0; padding-right: 10vw;">
+            <div id="skipVideoButton" style=" z-index: 1000; height: 100%; aspect-ratio: 1/1; border-radius: 50%; cursor: pointer; border:1px solid rgba(255, 255, 255, 0.4); background: #77777766 url(./svg/array.svg) no-repeat center; background-size: 70%; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display:none">
+            </div>
+        </div>
+        <div id="question-container">
+            <div id="final-points" style="
+                font-size:40px;
+                font-weight:700;
+                height: 13.5vh;
+                overflow: hidden;
+                word-wrap: break-word;
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            ">
+            </div>
+        </div>
+        <div id="cat-container">
+            <canvas id="cat-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"></canvas>
+            <video id="sbercat-video" playsinline crossorigin="anonymous"
+                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; object-position: top center; display: none; z-index: 3;"></video>
+            <video id="sbercat-video-2" playsinline crossorigin="anonymous"
+                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; object-position: top center; display: none; z-index: 3;"></video>
+            <video id="sbercat-video-3" playsinline crossorigin="anonymous" style="display: none;"></video>
+        </div>
+        <div class="third" id="third" style="height: 0; display:none"></div>
+    </div>
+
+    <div id="final-ui" style="display: none;"></div>
+
+    <div id="final-ui2" style="
+      position: fixed;
+      bottom: 4%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90vw;
+      padding: 30px;
+      background: rgba(0,0,0,0);
+      border-radius: 35px;
+      text-align: center;
+      color: white;
+      font-family: sans-serif;
+      font-size: 40px;
+      display: none;
+      z-index: 1001;">
+        <button id="shareBtn" class="primary" style="
+        width: 100%;
+        padding: 20px;
+        min-height: 96px;
+        margin-bottom: 20px;
+        border-radius: 16px;
+        font-size: 38px;
+        color: white;
+      ">Поделиться
+        </button>
+
+        <button id="retryBtn" style="
+        width: 100%;
+        padding: 20px;
+        min-height: 96px;
+        border-radius: 16px;
+        font-size: 38px;
+        color: white;
+      ">Пройти ещё раз
+        </button>
+    </div>
+
+</div>
+<div id="interaction-required-popup"
+     style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); background: rgba(0,0,0,0.25); z-index: 9999999; display: none; align-items: center; justify-content: center;">
+    <div class="soundBox">
+        <button id="interaction-btn" class="primary"
+                style="font-size: 38px; padding: 22px 60px; border-radius: 16px; border: none; cursor: pointer;">
+            Готов
+        </button>
+    </div>
+</div>
+<div id="blur-overlay"></div>
+<div id="orientation-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; color: white; display: flex; align-items: center; justify-content: center; z-index: 999999999;">
+    <p style="font-size: 5vw; text-align: center;">Пожалуйста, поверните экран</p>
+</div>
+<script src="src/js/common-functions.js"></script>
+<script src="src/js/preloader.js"></script>
+<script>
+
+    function checkOrientation() {
+        const overlay = document.getElementById('orientation-overlay');
+        // Show overlay if width is greater than height (landscape orientation)
+        if (window.innerWidth > window.innerHeight) {
+            overlay.style.display = 'flex';
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+
+    // Initial check on page load
+    document.addEventListener('DOMContentLoaded', checkOrientation);
+    // Re-check on window resize and orientation change events
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+
+    const urlParams = getUrlParams();
+    const SCENE_UUID = urlParams.uuid || '21e41c43-b5b1-490a-a27f-beb3331ee483';
+    const STATION = urlParams.station ? parseInt(urlParams.station) : 5;
+    let catCanvas, webglProcessor, activeVideo;
+    let videos;
+    let totalBalls = 0;
+    let isWrongStationHandled = false;
+
+    const skipVideoButton = document.getElementById('skipVideoButton');
+
+    function updateSkipButtonVisibility() {
+        const currentSrc = (activeVideo && activeVideo.dataset.originalSrc) || (activeVideo && activeVideo.currentSrc) || '';
+        const fileName = currentSrc.split('/').pop();
+
+        if (activeVideo && !activeVideo.paused && !activeVideo.ended && !fileName.includes('waiting') && fileName.length > 0) {
+            skipVideoButton.style.display = 'block';
+        } else {
+            skipVideoButton.style.display = 'none';
+        }
+    }
+
+    skipVideoButton.addEventListener('click', () => {
+        if (activeVideo && !activeVideo.paused && !activeVideo.ended) {
+            skipVideoButton.style.display = 'none';
+            activeVideo.currentTime = activeVideo.duration;
+        }
+    });
+
+    async function createStatistics(sceneUuid, station = null, points = null) {
+        // Analytics request disabled
+        return { status: "success" };
+    }
+    async function startWebcam() {
+        const webcamFeed = document.getElementById('arjs-video');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: {ideal: "environment"},
+                    width: {ideal: 1280},
+                    height: {ideal: 720},
+                    frameRate: { ideal: 24, max: 24 }
+                },
+                audio: false
+            });
+            webcamFeed.srcObject = stream;
+        } catch (err) {
+            console.error("Error accessing webcam: ", err);
+            document.getElementById('camera-access-required').style.display = 'block';
+        }
+    }
+
+
+
+    function playVideo(src, loop = false) {
+        const nextVideo = videos.find(v => v !== activeVideo);
+        if (!nextVideo) return;
+
+        const platformSrc = getPlatformVideoSrc(src);
+        const videoSrc = (window.preloadedVideoBlobs && window.preloadedVideoBlobs[platformSrc]) || platformSrc;
+        nextVideo.dataset.originalSrc = platformSrc;
+
+        nextVideo.pause();
+        nextVideo.currentTime = 0;
+        nextVideo.src = videoSrc;
+        nextVideo.loop = loop;
+        nextVideo.muted = false;
+        nextVideo.load();
+
+        const playPromise = nextVideo.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                if (activeVideo) {
+                    activeVideo.pause();
+                    if (!shouldUseWebGLChroma()) {
+                        document.getElementById("sbercat-video-2").style.display = 'none';
+                        document.getElementById("sbercat-video").style.display = 'none';
+                    }
+                }
+                activeVideo = nextVideo;
+                if (shouldUseWebGLChroma()) {
+                    activeVideo.style.display = 'none';
+                    catCanvas.style.display = 'block';
+                } else {
+                    activeVideo.style.display = 'block';
+                    catCanvas.style.display = 'none';
+                }
+                updateSkipButtonVisibility();
+            }).catch(error => {
+                console.error("Video play failed:", error);
+            });
+        }
+    }
+
+    function applyAndroidVideoTransform(videoElement) {
+        if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+        const container = document.getElementById('cat-container');
+        const contW = container.offsetWidth;
+        const contH = container.offsetHeight;
+        const vW = videoElement.videoWidth;
+        const vH = videoElement.videoHeight;
+        const cropPercent = 0.5;
+        const croppedHeight = vH * (1 - cropPercent);
+        const scale = Math.min(contW / vW, contH / croppedHeight);
+        const finalW = vW * scale;
+        const finalH = vH * scale;
+        const offsetX = (contW - finalW) / 2;
+        const offsetY = (contH - finalH) / 2 - (vH * cropPercent * scale);
+        videoElement.style.position = 'absolute';
+        videoElement.style.left = offsetX + 'px';
+        videoElement.style.top = offsetY + 'px';
+        videoElement.style.width = finalW + 'px';
+        videoElement.style.height = finalH + 'px';
+        videoElement.style.objectFit = 'cover';
+    }
+
+    function applyChromaKey(videoElement) {
+        if (!shouldUseWebGLChroma() || !webglProcessor || !videoElement.videoWidth) return;
+
+        const cropPercent = 0;
+        const crop = {
+            x: 0,
+            y: cropPercent,
+            width: 1,
+            height: 1 - cropPercent
+        };
+
+        const keyingOptions = {
+            threshold: 60 / 255.0,
+            max_green: 180.0 / 255.0
+        };
+
+        webglProcessor.render(videoElement, crop, keyingOptions);
+    }
+
+    function renderLoop() {
+        requestAnimationFrame(renderLoop);
+        if (activeVideo && !activeVideo.paused) {
+            if (shouldUseWebGLChroma()) {
+                applyChromaKey(activeVideo);
+            }
+        }
+    }
+
+    function handleWrongStation() {
+        if (isWrongStationHandled) return;
+        isWrongStationHandled = true;
+
+        document.getElementById('final-ui2').style.display = 'block';
+        document.getElementById('final-ui2').innerHTML = '';
+
+        const questionContainer = document.getElementById('question-container');
+        questionContainer.style.display = 'flex';
+        questionContainer.innerHTML = `<div style="text-align: center;"><div style="font-size: 46px;text-align: center; padding-bottom: 5px; color: #ff3344; letter-spacing: 2px;">ТРЕВОГА: НЕВЕРНЫЙ СЕКТОР!</div><div style="font-size: 34px;">Ты зашёл в опасную зону заражения. Вернись к предыдущей станции!</div></div>`;
+
+        videos.forEach(v => {
+            v.pause();
+            v.muted = true;
+            v.currentTime = 0;
+            if (!shouldUseWebGLChroma()) {
+                v.style.display = 'none';
+            }
+        });
+
+        document.getElementById('blur-overlay').style.display = 'block';
+
+        const wrongStationBtn = document.createElement('button');
+        wrongStationBtn.id = 'wrong-btn';
+        wrongStationBtn.className = 'primary';
+        wrongStationBtn.textContent = 'ВЕРНУТЬСЯ К МАРШРУТУ';
+        wrongStationBtn.style.display = 'none';
+        wrongStationBtn.onclick = function () {
+            document.getElementById('blur-overlay').style.display = 'none';
+            window.location.href = 'qr.html';
+        };
+
+        const finalUi2 = document.getElementById('final-ui2');
+        finalUi2.appendChild(wrongStationBtn);
+
+
+        playVideo('general/lost', false);
+    }
+
+    function init() {
+        startWebcam();
+        catCanvas = document.getElementById('cat-canvas');
+
+        if (!shouldUseWebGLChroma()) {
+            catCanvas.style.display = 'none';
+        } else {
+            webglProcessor = new WebGLVideoProcessor(catCanvas);
+        }
+
+        videos = [
+            document.getElementById('sbercat-video'),
+            document.getElementById('sbercat-video-2'),
+            document.getElementById('sbercat-video-3')
+        ];
+        activeVideo = videos[0];
+
+
+
+        videos.forEach(v => {
+            v.addEventListener('ended', function () {
+                const videoSource = v.dataset.originalSrc || v.currentSrc || v.src || "";
+                skipVideoButton.style.display = 'none';
+                if (videoSource.includes('vii_') || videoSource.includes('Scen_5_25fps')) {
+                    if (activeVideo) {
+                        activeVideo.pause();
+                        activeVideo.currentTime = 0;
+                        activeVideo.style.display = 'none';
+                    }
+                    if (catCanvas) {
+                        catCanvas.style.display = 'none';
+                    }
+                    document.getElementById("final-ui2").style.display = "block";
+                    document.getElementById("final-message-after-video").style.display = "block";
+                    document.getElementById("final-points").style.height = "auto";
+                    document.getElementById("final-points").style.overflow = "visible";
+                    document.getElementById("final-points").style.padding = "14px";
+                    const qc = document.getElementById("question-container");
+                    qc.style.height = "auto";
+                    qc.style.maxHeight = "calc(100vh - 270px)";
+                    qc.style.overflowY = "auto";
+                    return;
+                }
+                if (videoSource.includes('lost') || videoSource.includes('cat_2_scene_wrong_station')) {
+                    document.getElementById("wrong-btn").style.display = "block";
+                }
+                if (videoSource.includes('wait')) {
+                    incrementWaitCycle();
+                    const nextWait = getWaitingVideoPath();
+                    const cleanCur = videoSource.replace(/\.[^.]+$/, '');
+                    const cleanNext = nextWait.replace(/\.[^.]+$/, '');
+                    if (!cleanCur.endsWith(cleanNext.split('/').pop())) {
+                        playVideo(nextWait, true);
+                        return;
+                    }
+                }
+                if (!v.loop) {
+                    playVideo(getWaitingVideoPath(), true);
+                }
+                updateSkipButtonVisibility();
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            if (shouldUseWebGLChroma() && activeVideo) {
+                applyChromaKey(activeVideo);
+            }
+        });
+
+        const currentFile = window.location.pathname.split('/').pop();
+        let expectedStation = localStorage.getItem('currentStation');
+
+        if (((currentFile !== expectedStation) && expectedStation) || !expectedStation) {
+            document.getElementById('soundOverlay').style.display = 'none';
+            const interactionPopup = document.getElementById('interaction-required-popup');
+            interactionPopup.style.display = 'flex';
+            document.getElementById('interaction-btn').onclick = () => {
+                interactionPopup.style.display = 'none';
+                if (!isWrongStationHandled) {
+                    handleWrongStation();
+                }
+            };
+        }
+    }
+    const soundStartBtn = document.getElementById('soundStartBtn');
+    soundStartBtn.addEventListener('click', () => {
+        resetWaitCycle();
+        videos.forEach(v => v.muted = false);
+        soundOverlay.style.display = 'none';
+        finishQuiz();
+    });
+
+    function finishQuiz() {
+        resetWaitCycle();
+        createStatistics(SCENE_UUID, STATION);
+        const finalUI = document.getElementById("final-ui");
+        finalUI.style.display = "block";
+
+        const totalBalls = parseInt(localStorage.getItem('total_balls') || '0', 10);
+        const totalQuestions = parseInt(localStorage.getItem('questionCount') || '25', 10);
+        const percentage = totalQuestions > 0 ? Math.round((totalBalls / totalQuestions) * 100) : 0;
+
+        let endingVideo = '7station/vii_fatal';
+        let endingTitle = 'Фатальный финал: Заражение';
+        let endingDesc = 'Биологическая катастрофа поглотила всё. Тебе не удалось сдержать угрозу...';
+
+        if (percentage >= 90) {
+            endingVideo = '7station/vii_good';
+            endingTitle = 'Истинный финал: Выживание';
+            endingDesc = 'Безупречный результат! Ты раскрыл все тайны биотеррора и выбрался живым!';
+        } else if (percentage >= 60) {
+            endingVideo = '7station/vii_medium';
+            endingTitle = 'Нейтральный финал: Тяжелое спасение';
+            endingDesc = 'Ты выжил, но какой ценой... Твои навыки позволили спастись, но кошмар еще не закончен.';
+        }
+
+        playVideo(endingVideo, false);
+
+        document.getElementById("final-points").innerHTML = `
+          <div>
+            <div style="font-size: 46px; font-weight: 700; margin-bottom: 8px;">${endingTitle}</div>
+            <div style="font-size: 32px; margin-top: 5px;">Правильных ответов: ${totalBalls} из ${totalQuestions} (${percentage}%)</div>
+            <div style="font-size: 26px; margin-top: 8px; opacity: 0.9;">${endingDesc}</div>
+            <div id="final-message-after-video" style="display:none; margin-top: 18px;">
+                <div style="font-size: 26px; font-weight: 700; color: #44ff88; margin-bottom: 12px; letter-spacing: 1px;">МИССИЯ ЗАВЕРШЕНА!</div>
+                <div style="padding: 18px 20px; background: rgba(220, 30, 45, 0.2); border: 2px solid rgba(255, 60, 75, 0.7); border-radius: 18px; box-shadow: 0 0 30px rgba(220, 20, 35, 0.45); text-align: center;">
+                    <div style="font-family: var(--font-display, inherit); font-size: 28px; font-weight: 700; color: #ff3b49; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px;">СКОРО: НОВАЯ ХОРРОР-ИГРА!</div>
+                    <div style="font-size: 20px; line-height: 1.4; color: #f0f0f0; margin-bottom: 16px;">Команда <b>GAN</b> готовит к релизу новую захватывающую хоррор-игру. Тебя ждут еще более леденящая атмосфера, напряженный сюжет и борьба за выживание!</div>
+                    <a href="https://gan.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #ff2d3d, #b3101c); color: #ffffff; font-family: var(--font-display, inherit); font-size: 22px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border-radius: 12px; text-decoration: none; box-shadow: 0 0 25px rgba(255, 45, 61, 0.65);">УЗНАТЬ БОЛЬШЕ НА GAN.COM</a>
+                </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById("shareBtn").onclick = () => {
+            try {
+                navigator.share({
+                    title: "Хоррор-квест!",
+                    text: `Я прошел хоррор-квест с результатом ${totalBalls}/${totalQuestions} (${percentage}%)! Сможешь выжить?`,
+                    url: window.location.href
+                });
+            } catch (e) {
+                alert("Поделиться невозможно на этом устройстве.");
+            }
+        };
+
+        document.getElementById("retryBtn").onclick = () => {
+            resetWaitCycle();
+            localStorage.removeItem('currentStation');
+            localStorage.removeItem('questionCount');
+            localStorage.removeItem('total_balls');
+            localStorage.removeItem('index_progress');
+            for (let i = 2; i <= 6; i++) {
+                localStorage.removeItem(`station_quiz_state_${i}`);
+                localStorage.removeItem(`answered_questions_${i}`);
+            }
+            window.location.href = "index.html";
+        };
+    }
+
+    const finalAssetsConfig = {
+        goodVideo: '7station/vii_good',
+        mediumVideo: '7station/vii_medium',
+        fatalVideo: '7station/vii_fatal',
+        waitingVideo: 'general/wait',
+        wrongStationVideo: 'general/lost'
+    };
+
+    preloadAssets(finalAssetsConfig, () => {
+        init();
+        if (shouldUseWebGLChroma()) {
+            renderLoop();
+        }
+    }, ['main-content', 'soundOverlay']);
+
+</script>
+<div id="camera-access-required"
+     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; color: white; text-align: center; z-index: 99999999;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <h1 style="font-size: 60px;">Требуется доступ к камере</h1>
+        <p style="font-size: 40px;">Пожалуйста, разрешите доступ к камере в настройках<br>браузера и обновите страницу.
+        </p>
+    </div>
+</div>
+</body>
+</html>
