@@ -143,12 +143,12 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <!-- Секция ассетов для предзагрузки ресурсов -->
-        <a-assets>
+        <!-- Секция ассетов с таймаутом, чтобы загрузка тяжелых моделей не блокировала запуск камеры -->
+        <a-assets timeout="1500">
             <!-- 
                =======================================================================
                ПУТЬ К 3D-МОДЕЛИ:
-               Замените 'model.glb' ниже на путь к вашему файлу модели (.gltf или .glb).
+               Замените 'Cate2.glb' ниже на путь к вашему файлу модели (.gltf или .glb).
                ======================================================================= 
             -->
             <a-asset-item id="ar-3d-model" src="Cate2.glb"></a-asset-item>
@@ -161,13 +161,11 @@
           Элемент отслеживания маркера:
           targetIndex: 0 соответствует первому изображению внутри файла targets.mind
         -->
-        <a-entity mindar-image-target="targetIndex: 0">
+        <a-entity mindar-image-target="targetIndex: 0" id="marker-target">
             <!-- 
               3D модель:
               - src: ссылка на ассет '#ar-3d-model'
-              - animation-mixer: встроенный компонент aframe-extras, который
-                автоматически находит и зацикливает скелетную/gltf анимацию модели
-              - position, rotation, scale: подгоняйте под размеры вашей модели
+              - animation-mixer: встроенный компонент aframe-extras для анимации
             -->
             <a-gltf-model 
                 src="#ar-3d-model" 
@@ -185,15 +183,52 @@
             const overlay = document.getElementById('ui-overlay');
             const sceneEl = document.getElementById('ar-scene');
 
+            // Проверка открытия файла через file:/// (браузеры блокируют камеру без веб-сервера)
+            if (window.location.protocol === 'file:') {
+                const desc = document.querySelector('.description');
+                if (desc) {
+                    desc.innerHTML = '<span style="color: #ef4444; font-weight: bold; font-size: 16px;">⚠️ Файл открыт через file:///</span><br><br>' +
+                        'Браузеры блокируют доступ к камере без локального сервера.<br><br>' +
+                        'Запустите сервер командой в терминале:<br>' +
+                        '<code style="background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 6px; display: inline-block; margin: 8px 0;">python -m http.server 8000</code><br>' +
+                        'и откройте: <a href="http://localhost:8000/test.html" style="color: #60a5fa; text-decoration: underline;">http://localhost:8000/test.html</a>';
+                }
+            }
+
+            // Слушатели событий MindAR
+            sceneEl.addEventListener('arReady', () => {
+                console.log('MindAR успешно инициализирован и готов к трекингу.');
+            });
+
+            sceneEl.addEventListener('arError', (event) => {
+                console.error('Ошибка MindAR:', event);
+                alert('Ошибка MindAR при запуске: ' + (event.detail?.error || 'Проверьте консоль браузера'));
+            });
+
+            const markerTarget = document.getElementById('marker-target');
+            if (markerTarget) {
+                markerTarget.addEventListener('targetFound', () => {
+                    console.log('Маркер найден!');
+                });
+                markerTarget.addEventListener('targetLost', () => {
+                    console.log('Маркер потерян.');
+                });
+            }
+
             startBtn.addEventListener('click', async () => {
+                if (window.location.protocol === 'file:') {
+                    alert('Браузер не даст доступ к камере по протоколу file:///.\n\nЗапустите локальный сервер (например, python -m http.server 8000) и перейдите на http://localhost:8000/test.html');
+                    return;
+                }
+
                 startBtn.disabled = true;
                 startBtn.textContent = 'Подключение камеры...';
 
                 // Функция запуска MindAR системы
                 const runAR = async () => {
-                    const arSystem = sceneEl.systems['mindar-image-system'];
+                    const arSystem = sceneEl.systems && sceneEl.systems['mindar-image-system'];
                     if (!arSystem) {
-                        alert('Ошибка: MindAR система не найдена.');
+                        alert('Ошибка: MindAR система еще не загрузилась. Подождите пару секунд и повторите.');
                         startBtn.disabled = false;
                         startBtn.textContent = 'Старт AR';
                         return;
@@ -206,14 +241,16 @@
                         overlay.classList.add('hidden');
                     } catch (err) {
                         console.error('Ошибка при запуске камеры/AR:', err);
-                        alert('Не удалось запустить камеру. Убедитесь, что выдан доступ к камере и сайт открыт по HTTPS или на localhost.');
+                        alert('Не удалось запустить камеру:\n' + (err.message || err) + '\n\nУбедитесь, что вы предоставили доступ к камере и сайт открыт по HTTPS или через localhost.');
                         startBtn.disabled = false;
                         startBtn.textContent = 'Старт AR';
                     }
                 };
 
-                // Если сцена A-Frame уже загрузилась - стартуем сразу, иначе ждем события loaded
-                if (sceneEl.hasLoaded) {
+                // Если система уже зарегистрирована или сцена готова — запускаем сразу
+                if (sceneEl.systems && sceneEl.systems['mindar-image-system']) {
+                    await runAR();
+                } else if (sceneEl.hasLoaded) {
                     await runAR();
                 } else {
                     sceneEl.addEventListener('loaded', runAR, { once: true });
