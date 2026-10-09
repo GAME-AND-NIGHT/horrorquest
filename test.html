@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WebAR - MindAR & A-Frame</title>
+
+    <!-- 1. Библиотека A-Frame (3D движок) -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <!-- 2. Библиотека Mind-AR для A-Frame (Image Tracking) -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <!-- 3. Библиотека A-Frame Extras (необходима для работы компонента 'animation-mixer') -->
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000;
+        }
+
+        /* Полноэкранный стартовый оверлей */
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 99999;
+            background: radial-gradient(circle at center, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            text-align: center;
+            color: #ffffff;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        #ui-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .overlay-card {
+            max-width: 420px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 32px 24px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .description {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #94a3b8;
+            margin-bottom: 28px;
+        }
+
+        /* Кнопка запуска */
+        .btn-start {
+            display: inline-block;
+            width: 100%;
+            padding: 16px 24px;
+            font-size: 17px;
+            font-weight: 600;
+            color: #ffffff;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+        }
+
+        .btn-start:active {
+            transform: translateY(0);
+        }
+
+        .btn-start:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Стартовый интерфейс (UI-overlay) -->
+    <div id="ui-overlay">
+        <div class="overlay-card">
+            <h1 class="title">Дополненная реальность</h1>
+            <p class="description">
+                Для работы требуется доступ к камере устройства.<br>
+                После запуска наведите камеру на изображение-маркер.
+            </p>
+            <button id="start-btn" class="btn-start">Старт AR</button>
+        </div>
+    </div>
+
+    <!-- 
+      =======================================================================
+      ПУТЬ К ФАЙЛУ МАРКЕРА:
+      В параметре 'imageTargetSrc: targets.mind' укажите путь к вашему .mind файлу.
+      Параметр 'autoStart: false' предотвращает автоматический запуск камеры.
+      ======================================================================= 
+    -->
+    <a-scene 
+        id="ar-scene"
+        mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: yes; uiScanning: yes; uiError: yes;"
+        color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false">
+
+        <!-- Секция ассетов для предзагрузки ресурсов -->
+        <a-assets>
+            <!-- 
+               =======================================================================
+               ПУТЬ К 3D-МОДЕЛИ:
+               Замените 'model.glb' ниже на путь к вашему файлу модели (.gltf или .glb).
+               ======================================================================= 
+            -->
+            <a-asset-item id="ar-3d-model" src="Cate2.glb"></a-asset-item>
+        </a-assets>
+
+        <!-- Камера сцены -->
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <!-- 
+          Элемент отслеживания маркера:
+          targetIndex: 0 соответствует первому изображению внутри файла targets.mind
+        -->
+        <a-entity mindar-image-target="targetIndex: 0">
+            <!-- 
+              3D модель:
+              - src: ссылка на ассет '#ar-3d-model'
+              - animation-mixer: встроенный компонент aframe-extras, который
+                автоматически находит и зацикливает скелетную/gltf анимацию модели
+              - position, rotation, scale: подгоняйте под размеры вашей модели
+            -->
+            <a-gltf-model 
+                src="#ar-3d-model" 
+                position="0 0 0" 
+                rotation="0 0 0" 
+                scale="0.5 0.5 0.5" 
+                animation-mixer>
+            </a-gltf-model>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const startBtn = document.getElementById('start-btn');
+            const overlay = document.getElementById('ui-overlay');
+            const sceneEl = document.getElementById('ar-scene');
+
+            startBtn.addEventListener('click', async () => {
+                startBtn.disabled = true;
+                startBtn.textContent = 'Подключение камеры...';
+
+                // Функция запуска MindAR системы
+                const runAR = async () => {
+                    const arSystem = sceneEl.systems['mindar-image-system'];
+                    if (!arSystem) {
+                        alert('Ошибка: MindAR система не найдена.');
+                        startBtn.disabled = false;
+                        startBtn.textContent = 'Старт AR';
+                        return;
+                    }
+
+                    try {
+                        // Запуск камеры и распознавания
+                        await arSystem.start();
+                        // Прячем экран со стартовой кнопкой
+                        overlay.classList.add('hidden');
+                    } catch (err) {
+                        console.error('Ошибка при запуске камеры/AR:', err);
+                        alert('Не удалось запустить камеру. Убедитесь, что выдан доступ к камере и сайт открыт по HTTPS или на localhost.');
+                        startBtn.disabled = false;
+                        startBtn.textContent = 'Старт AR';
+                    }
+                };
+
+                // Если сцена A-Frame уже загрузилась - стартуем сразу, иначе ждем события loaded
+                if (sceneEl.hasLoaded) {
+                    await runAR();
+                } else {
+                    sceneEl.addEventListener('loaded', runAR, { once: true });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
